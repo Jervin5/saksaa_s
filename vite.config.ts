@@ -5,7 +5,7 @@ import { defineConfig } from 'vite';
 import compression from 'vite-plugin-compression';
 
 export default defineConfig({
- base: "/",
+ base: "/saksaa_s/",
 
   plugins: [
     react(), 
