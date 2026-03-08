@@ -27,39 +27,60 @@ import b22 from './images/Kundan_Bangels/Kundan_Bangels22.png';
 import b23 from './images/Kundan_Bangels/Kundan_Bangels23.png';
 
 // Studs (9)
-import s1 from './images/studs/studs1.png'; import s2 from './images/studs/studs2.png';
-import s3 from './images/studs/studs3.jpg'; import s4 from './images/studs/studs4.jpg';
-import s5 from './images/studs/studs5.jpg'; import s6 from './images/studs/studs6.jpg';
-import s7 from './images/studs/studs7.jpg'; import s8 from './images/studs/studs8.jpg';
+import s1 from './images/studs/studs1.png'; 
+import s2 from './images/studs/studs2.png';
+import s3 from './images/studs/studs3.jpg';
+ import s4 from './images/studs/studs4.jpg';
+import s5 from './images/studs/studs5.jpg'; 
+import s6 from './images/studs/studs6.jpg';
+import s7 from './images/studs/studs7.jpg';
+ import s8 from './images/studs/studs8.jpg';
 import s9 from './images/studs/studs9.jpg';
 
 // Jhumkas (7)
-import j1 from './images/kundan_jhumkas/kundan_jhumkas1.png'; import j2 from './images/kundan_jhumkas/kundan_jhumkas2.png';
-import j3 from './images/kundan_jhumkas/kundan_jhumkas3.png'; import j4 from './images/kundan_jhumkas/kundan_jhumkas4.png';
-import j5 from './images/kundan_jhumkas/kundan_jhumkas5.png'; import j6 from './images/kundan_jhumkas/kundan_jhumkas6.jpg';
+import j1 from './images/kundan_jhumkas/kundan_jhumkas1.png'; 
+import j2 from './images/kundan_jhumkas/kundan_jhumkas2.png';
+import j3 from './images/kundan_jhumkas/kundan_jhumkas3.png'; 
+import j4 from './images/kundan_jhumkas/kundan_jhumkas4.png';
+import j5 from './images/kundan_jhumkas/kundan_jhumkas5.png';
+ import j6 from './images/kundan_jhumkas/kundan_jhumkas6.jpg';
 import j7 from './images/kundan_jhumkas/kundan_jhumkas7.png';
 
 // Modern Jhumkas (9)
-import mj1 from './images/kundan_modern_earings/kundan_modern_earings1.png'; import mj2 from './images/kundan_modern_earings/kundan_modern_earings2.png';
-import mj3 from './images/kundan_modern_earings/kundan_modern_earings3.png'; import mj4 from './images/kundan_modern_earings/kundan_modern_earings4.png';
-import mj5 from './images/kundan_modern_earings/kundan_modern_earings5.png'; import mj6 from './images/kundan_modern_earings/kundan_modern_earings6.png';
-import mj7 from './images/kundan_modern_earings/kundan_modern_earings7.png'; import mj8 from './images/kundan_modern_earings/kundan_modern_earings8.png';
+import mj1 from './images/kundan_modern_earings/kundan_modern_earings1.png'; 
+import mj2 from './images/kundan_modern_earings/kundan_modern_earings2.png';
+import mj3 from './images/kundan_modern_earings/kundan_modern_earings3.png'; 
+import mj4 from './images/kundan_modern_earings/kundan_modern_earings4.png';
+import mj5 from './images/kundan_modern_earings/kundan_modern_earings5.png'; 
+import mj6 from './images/kundan_modern_earings/kundan_modern_earings6.png';
+import mj7 from './images/kundan_modern_earings/kundan_modern_earings7.png'; 
+import mj8 from './images/kundan_modern_earings/kundan_modern_earings8.png';
 import mj9 from './images/kundan_modern_earings/kundan_modern_earings9.png';
 
 // Silk Thread Jhumkas (15)
-import st1 from './images/silk_thread_jhumkas/silk_thread_jhumkas1.png'; import st2 from './images/silk_thread_jhumkas/silk_thread_jhumkas2.png';
-import st3 from './images/silk_thread_jhumkas/silk_thread_jhumkas3.jpeg'; import st4 from './images/silk_thread_jhumkas/silk_thread_jhumkas4.jpeg';
-import st5 from './images/silk_thread_jhumkas/silk_thread_jhumkas5.jpeg'; import st6 from './images/silk_thread_jhumkas/silk_thread_jhumkas6.jpeg';
-import st7 from './images/silk_thread_jhumkas/silk_thread_jhumkas7.jpeg'; import st8 from './images/silk_thread_jhumkas/silk_thread_jhumkas8.jpeg';
-import st9 from './images/silk_thread_jhumkas/silk_thread_jhumkas9.jpeg'; import st10 from './images/silk_thread_jhumkas/silk_thread_jhumkas10.jpeg';
-import st11 from './images/silk_thread_jhumkas/silk_thread_jhumkas11.jpeg'; import st12 from './images/silk_thread_jhumkas/silk_thread_jhumkas12.jpeg';
-import st13 from './images/silk_thread_jhumkas/silk_thread_jhumkas13.jpeg'; import st14 from './images/silk_thread_jhumkas/silk_thread_jhumkas14.jpeg';
+import st1 from './images/silk_thread_jhumkas/silk_thread_jhumkas1.png'; 
+import st2 from './images/silk_thread_jhumkas/silk_thread_jhumkas2.png';
+import st3 from './images/silk_thread_jhumkas/silk_thread_jhumkas3.jpeg';
+ import st4 from './images/silk_thread_jhumkas/silk_thread_jhumkas4.jpeg';
+import st5 from './images/silk_thread_jhumkas/silk_thread_jhumkas5.jpeg'; 
+import st6 from './images/silk_thread_jhumkas/silk_thread_jhumkas6.jpeg';
+import st7 from './images/silk_thread_jhumkas/silk_thread_jhumkas7.jpeg'; 
+import st8 from './images/silk_thread_jhumkas/silk_thread_jhumkas8.jpeg';
+import st9 from './images/silk_thread_jhumkas/silk_thread_jhumkas9.jpeg'; 
+import st10 from './images/silk_thread_jhumkas/silk_thread_jhumkas10.jpeg';
+import st11 from './images/silk_thread_jhumkas/silk_thread_jhumkas11.jpeg'; 
+import st12 from './images/silk_thread_jhumkas/silk_thread_jhumkas12.jpeg';
+import st13 from './images/silk_thread_jhumkas/silk_thread_jhumkas13.jpeg'; 
+import st14 from './images/silk_thread_jhumkas/silk_thread_jhumkas14.jpeg';
 import st15 from './images/silk_thread_jhumkas/silk_thread_jhumkas15.jpeg';
 
 // Traditional Jhumkas (6)
-import tj1 from './images/traditional_jhumkas/traditional_jhumkas1.png'; import tj2 from './images/traditional_jhumkas/traditional_jhumkas2.png';
-import tj3 from './images/traditional_jhumkas/traditional_jhumkas3.png'; import tj4 from './images/traditional_jhumkas/traditional_jhumkas4.png';
-import tj5 from './images/traditional_jhumkas/traditional_jhumkas5.png'; import tj6 from './images/traditional_jhumkas/traditional_jhumkas6.png';
+import tj1 from './images/traditional_jhumkas/traditional_jhumkas1.png'; 
+import tj2 from './images/traditional_jhumkas/traditional_jhumkas2.png';
+import tj3 from './images/traditional_jhumkas/traditional_jhumkas3.png'; 
+import tj4 from './images/traditional_jhumkas/traditional_jhumkas4.png';
+import tj5 from './images/traditional_jhumkas/traditional_jhumkas5.png'; 
+import tj6 from './images/traditional_jhumkas/traditional_jhumkas6.png';
 
 export function generateShopProducts(): Product[] {
   const allProducts: Product[] = [];

@@ -4,6 +4,7 @@ import { ProductCard } from '../components/ProductCard';
 import { Filter, ChevronDown, SlidersHorizontal, Search, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { shopProducts } from '../shopProducts';
+import { getLocalProducts } from '../pages/Localproductsstore';
 
 import heroImg1 from '../images/Kundan_Bangels/Kundan_Bangels4.png';
 import heroImg5 from '../images/kundan_jhumkas/kundan_jhumkas1.png';
@@ -49,6 +50,12 @@ export const Shop = () => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isMobile, setIsMobile]         = useState(false);
   const [currentPage, setCurrentPage]   = useState(1);
+  const [allProducts, setAllProducts]   = useState(() => [...shopProducts, ...getLocalProducts()]);
+
+  // Re-read localStorage every time Shop page is visited
+  useEffect(() => {
+    setAllProducts([...shopProducts, ...getLocalProducts()]);
+  }, []);
   const [expandedSections, setExpandedSections] = useState({
     categories: true,
     priceRange: true,
@@ -69,12 +76,9 @@ export const Shop = () => {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  useEffect(() => {
-    if (!isMobile) setIsFilterOpen(true);
-  }, [isMobile]);
 
   const filteredProducts = useMemo(() => {
-    return shopProducts.filter(product => {
+    return allProducts.filter(product => {
       if (activeCategory    && product.category    !== activeCategory)    return false;
       if (activeSubCategory && product.subCategory !== activeSubCategory) return false;
       if (activePriceRange) {
@@ -89,7 +93,7 @@ export const Shop = () => {
       }
       return true;
     });
-  }, [activeCategory, activeSubCategory, activePriceRange, activeSize, searchQuery]);
+  }, [activeCategory, activeSubCategory, activePriceRange, activeSize, searchQuery, allProducts]);
 
   const totalPages        = Math.ceil(filteredProducts.length / itemsPerPage);
   const paginatedProducts = filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
