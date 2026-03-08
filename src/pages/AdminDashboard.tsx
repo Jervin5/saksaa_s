@@ -11,6 +11,7 @@ import {
   updateLocalProduct,
   compressImage,
 } from '../pages/Localproductsstore';
+import { shopProducts } from '../shopProducts';
 
 const ALL_CATEGORIES = ['Bangles', 'Earrings'];
 
@@ -47,12 +48,18 @@ export const AdminDashboard = () => {
   const [editData, setEditData]       = useState<Partial<Product>>({});
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
 
-  // Load products from localStorage when inventory tab opens
+  // Load products from both static file and localStorage when inventory tab opens
   useEffect(() => {
     if (activeTab === 'inventory') {
       setLoading(true);
       const local = getLocalProducts();
-      setProducts(local);
+      // Merge: static products first, then localStorage products
+      const localIds = new Set(local.map(p => p.id));
+      const merged = [
+        ...shopProducts.filter(p => !localIds.has(p.id)),
+        ...local,
+      ];
+      setProducts(merged);
       setLoading(false);
     }
   }, [activeTab]);
@@ -124,16 +131,29 @@ export const AdminDashboard = () => {
 
   const saveEdit = (id: string) => {
     setProducts(prev => prev.map(p => p.id === id ? { ...p, ...editData } : p));
-    updateLocalProduct(id, editData);
+    const existing = getLocalProducts();
+    if (existing.find(p => p.id === id)) {
+      updateLocalProduct(id, editData);
+    } else {
+      // Static product — save full product with edits to localStorage
+      const original = products.find(p => p.id === id);
+      if (original) saveLocalProduct({ ...original, ...editData });
+    }
     setEditingId(null);
     setEditData({});
   };
 
   // ── STOCK TOGGLE ─────────────────────────────────
   const toggleStock = (product: Product) => {
-    const newStock = product.inStock === false ? true : false;
+    const newStock = product.inStock !== false ? false : true;
     setProducts(prev => prev.map(p => p.id === product.id ? { ...p, inStock: newStock } : p));
+    // Save override to localStorage (works for both static and local products)
     updateLocalProduct(product.id, { inStock: newStock });
+    // If it's a static product not yet in localStorage, add it with the stock change
+    const existing = getLocalProducts();
+    if (!existing.find(p => p.id === product.id)) {
+      saveLocalProduct({ ...product, inStock: newStock });
+    }
   };
 
   // ── GROUP BY CATEGORY ─────────────────────────────
