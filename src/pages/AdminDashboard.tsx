@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus, Package, Image as ImageIcon, Edit3, Check, X,
-  Upload, TrendingUp, Star, Sparkles, ChevronDown, Search,
+  Upload, TrendingUp, Star, Sparkles, ChevronDown, Search, Trash2,
 } from 'lucide-react';
 import { Product } from '../types';
 import {
   getLocalProducts,
   saveLocalProduct,
   updateLocalProduct,
+  deleteLocalProduct,
   compressImage,
 } from '../pages/Localproductsstore';
 import { shopProducts } from '../shopProducts';
@@ -39,7 +40,7 @@ export const AdminDashboard = () => {
   const [saveError, setSaveError]   = useState('');
   const [uploading, setUploading]   = useState(false);
 
-  // Inventory state — load straight from localStorage
+  // Inventory state
   const [products, setProducts]       = useState<Product[]>([]);
   const [loading, setLoading]         = useState(false);
   const [filterCat, setFilterCat]     = useState('All');
@@ -47,13 +48,14 @@ export const AdminDashboard = () => {
   const [editingId, setEditingId]     = useState<string | null>(null);
   const [editData, setEditData]       = useState<Partial<Product>>({});
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [editImageUploading, setEditImageUploading] = useState(false);
 
-  // Load products from both static file and localStorage when inventory tab opens
+  // Load products
   useEffect(() => {
     if (activeTab === 'inventory') {
       setLoading(true);
       const local = getLocalProducts();
-      // Merge: static products first, then localStorage products
       const localIds = new Set(local.map(p => p.id));
       const merged = [
         ...shopProducts.filter(p => !localIds.has(p.id)),
@@ -64,21 +66,33 @@ export const AdminDashboard = () => {
     }
   }, [activeTab]);
 
-  // ── IMAGE UPLOAD ──────────────────────────────────
+  // ── ADD IMAGE UPLOAD ──────────────────────────────────
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) { console.log('❌ No file selected'); return; }
-    console.log('📁 File selected:', file.name, Math.round(file.size/1024), 'KB');
+    if (!file) return;
     setUploading(true);
     try {
       const base64 = await compressImage(file);
-      console.log('✅ Compressed base64 length:', base64.length, 'chars');
       setNewProduct(p => ({ ...p, image: base64, images: [base64] }));
     } catch (err) {
-      console.error('❌ Compression failed:', err);
       setSaveError('Image compression failed. Try a smaller image or paste a URL.');
     } finally {
       setUploading(false);
+    }
+  };
+
+  // ── EDIT IMAGE UPLOAD ─────────────────────────────────
+  const handleEditImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setEditImageUploading(true);
+    try {
+      const base64 = await compressImage(file);
+      setEditData(d => ({ ...d, image: base64, images: [base64] }));
+    } catch (err) {
+      // silently handle
+    } finally {
+      setEditImageUploading(false);
     }
   };
 
@@ -86,14 +100,10 @@ export const AdminDashboard = () => {
   const handleAddProduct = (e: React.FormEvent) => {
     e.preventDefault();
     setSaveError('');
-    console.log('🚀 Publish clicked. newProduct:', newProduct);
-
     if (!newProduct.image) {
-      console.log('❌ No image set');
       setSaveError('Please upload an image or paste an image URL.');
       return;
     }
-
     const product: Product = {
       ...(newProduct as Product),
       id:      `local_${Date.now()}`,
@@ -101,12 +111,7 @@ export const AdminDashboard = () => {
       under500: (newProduct.price ?? 0) < 500,
       images:  [newProduct.image!],
     };
-    console.log('💾 Saving product:', product.name, '| image starts with:', product.image?.substring(0, 30));
-
     const saved = saveLocalProduct(product);
-    console.log('💾 Save result:', saved);
-    console.log('📦 localStorage now:', localStorage.getItem('saksaas_admin_products')?.substring(0, 100));
-
     if (saved) {
       setSuccess(true);
       setNewProduct(EMPTY);
@@ -119,9 +124,12 @@ export const AdminDashboard = () => {
   // ── EDIT ─────────────────────────────────────────
   const startEdit = (product: Product) => {
     setEditingId(product.id);
+    setDeleteConfirmId(null);
     setEditData({
       name:       product.name,
       price:      product.price,
+      image:      product.image,
+      images:     product.images,
       trending:   product.trending,
       topSelling: product.topSelling,
       newArrival: product.newArrival,
@@ -135,7 +143,6 @@ export const AdminDashboard = () => {
     if (existing.find(p => p.id === id)) {
       updateLocalProduct(id, editData);
     } else {
-      // Static product — save full product with edits to localStorage
       const original = products.find(p => p.id === id);
       if (original) saveLocalProduct({ ...original, ...editData });
     }
@@ -143,13 +150,21 @@ export const AdminDashboard = () => {
     setEditData({});
   };
 
+  // ── DELETE ────────────────────────────────────────
+  const handleDelete = (product: Product) => {
+    // Remove from UI
+    setProducts(prev => prev.filter(p => p.id !== product.id));
+    // Remove from localStorage (works for local products; for static ones, we mark as deleted)
+    deleteLocalProduct(product.id);
+    setDeleteConfirmId(null);
+    setEditingId(null);
+  };
+
   // ── STOCK TOGGLE ─────────────────────────────────
   const toggleStock = (product: Product) => {
     const newStock = product.inStock !== false ? false : true;
     setProducts(prev => prev.map(p => p.id === product.id ? { ...p, inStock: newStock } : p));
-    // Save override to localStorage (works for both static and local products)
     updateLocalProduct(product.id, { inStock: newStock });
-    // If it's a static product not yet in localStorage, add it with the stock change
     const existing = getLocalProducts();
     if (!existing.find(p => p.id === product.id)) {
       saveLocalProduct({ ...product, inStock: newStock });
@@ -212,8 +227,8 @@ export const AdminDashboard = () => {
               <div className="lg:col-span-1 space-y-4">
                 <h2 className="font-serif font-bold text-xl mb-2">Overview</h2>
                 {[
-                  { label: 'Total Added',  value: getLocalProducts().length,  icon: Package,    color: 'bg-brand-light-green text-brand-deep-green' },
-                  { label: 'Out of Stock', value: totalOutStock,               icon: X,          color: 'bg-red-50 text-red-500'                     },
+                  { label: 'Total Added',  value: getLocalProducts().length,  icon: Package, color: 'bg-brand-light-green text-brand-deep-green' },
+                  { label: 'Out of Stock', value: totalOutStock,               icon: X,       color: 'bg-red-50 text-red-500'                     },
                 ].map(stat => (
                   <div key={stat.label} className="bg-white rounded-2xl p-5 border border-stone-100 flex items-center gap-4">
                     <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${stat.color}`}>
@@ -295,11 +310,8 @@ export const AdminDashboard = () => {
 
                   {/* Image */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">
-                      Product Image
-                    </label>
+                    <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Product Image</label>
                     <div className="flex gap-3 items-start">
-                      {/* Upload button */}
                       <label className={`flex-1 flex items-center justify-center h-12 bg-stone-50 border-2 border-dashed rounded-xl cursor-pointer transition-colors
                         ${uploading ? 'border-brand-gold opacity-60' : 'border-stone-200 hover:border-brand-deep-green'}`}>
                         <Upload size={16} className="text-stone-400 mr-2" />
@@ -308,12 +320,10 @@ export const AdminDashboard = () => {
                         </span>
                         <input type="file" className="hidden" onChange={handleFileUpload} accept="image/*" disabled={uploading} />
                       </label>
-                      {/* URL input */}
                       <input type="text" value={newProduct.image?.startsWith('data:') ? '' : (newProduct.image || '')}
                         onChange={e => setNewProduct(p => ({ ...p, image: e.target.value, images: [e.target.value] }))}
                         className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-4 h-12 text-sm focus:outline-none focus:ring-2 focus:ring-brand-deep-green/20"
                         placeholder="Or paste image URL..." />
-                      {/* Preview */}
                       <div className="w-12 h-12 rounded-xl bg-stone-100 overflow-hidden border border-stone-200 flex-shrink-0 flex items-center justify-center">
                         {newProduct.image
                           ? <img src={newProduct.image} className="w-full h-full object-cover" alt="preview" />
@@ -347,7 +357,6 @@ export const AdminDashboard = () => {
                     </div>
                   </div>
 
-                  {/* Error */}
                   {saveError && (
                     <div className="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-medium border border-red-100">
                       ⚠ {saveError}
@@ -440,23 +449,67 @@ export const AdminDashboard = () => {
                                 <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-stone-400">Tags</th>
                                 <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-stone-400">Stock</th>
                                 <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-stone-400 text-right">Price</th>
-                                <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-stone-400 text-center">Action</th>
+                                <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-stone-400 text-center">Actions</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-stone-50">
                               {catProducts.map(product => {
                                 const isInStock = product.inStock !== false;
-                                return (
-                                  <tr key={product.id} className="hover:bg-stone-50/60 transition-colors">
+                                const isEditing = editingId === product.id;
+                                const isConfirmingDelete = deleteConfirmId === product.id;
+                                const currentImage = isEditing ? (editData.image ?? product.image) : product.image;
 
-                                    {/* Product */}
+                                return (
+                                  <tr key={product.id} className={`transition-colors ${isEditing ? 'bg-brand-light-green/10' : 'hover:bg-stone-50/60'}`}>
+
+                                    {/* Product — with image change in edit mode */}
                                     <td className="px-6 py-3">
                                       <div className="flex items-center gap-3">
-                                        <img src={product.image} className="w-10 h-10 object-cover rounded-lg flex-shrink-0" alt={product.name} />
-                                        {editingId === product.id ? (
-                                          <input type="text" value={editData.name ?? product.name}
-                                            onChange={e => setEditData(d => ({ ...d, name: e.target.value }))}
-                                            className="border border-stone-200 rounded-lg px-2 py-1 text-sm w-40 focus:outline-none" />
+                                        {/* Image: clickable to change when editing */}
+                                        <div className="relative flex-shrink-0 group">
+                                          <img
+                                            src={currentImage}
+                                            className={`w-10 h-10 object-cover rounded-lg transition-all ${isEditing ? 'ring-2 ring-brand-deep-green' : ''}`}
+                                            alt={product.name}
+                                          />
+                                          {isEditing && (
+                                            <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
+                                              {editImageUploading
+                                                ? <span className="text-white text-[8px] font-bold">...</span>
+                                                : <Upload size={12} className="text-white" />
+                                              }
+                                              <input
+                                                type="file"
+                                                className="hidden"
+                                                accept="image/*"
+                                                disabled={editImageUploading}
+                                                onChange={handleEditImageUpload}
+                                              />
+                                            </label>
+                                          )}
+                                        </div>
+
+                                        {/* Name input or URL field in edit mode */}
+                                        {isEditing ? (
+                                          <div className="flex flex-col gap-1 min-w-0">
+                                            <input
+                                              type="text"
+                                              value={editData.name ?? product.name}
+                                              onChange={e => setEditData(d => ({ ...d, name: e.target.value }))}
+                                              className="border border-stone-200 rounded-lg px-2 py-1 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-brand-deep-green/20"
+                                              placeholder="Product name"
+                                            />
+                                            <input
+                                              type="text"
+                                              value={(editData.image ?? product.image)?.startsWith('data:') ? '' : (editData.image ?? product.image ?? '')}
+                                              onChange={e => setEditData(d => ({ ...d, image: e.target.value, images: [e.target.value] }))}
+                                              className="border border-stone-200 rounded-lg px-2 py-1 text-[10px] w-40 focus:outline-none focus:ring-2 focus:ring-brand-deep-green/20 text-stone-400"
+                                              placeholder="Or paste image URL..."
+                                            />
+                                            {(editData.image ?? product.image)?.startsWith('data:') && (
+                                              <p className="text-[9px] text-emerald-600 font-medium">✓ Image updated</p>
+                                            )}
+                                          </div>
                                         ) : (
                                           <span className="font-semibold text-stone-800 text-sm">{product.name}</span>
                                         )}
@@ -471,7 +524,7 @@ export const AdminDashboard = () => {
                                     {/* Tags */}
                                     <td className="px-6 py-3">
                                       <div className="flex gap-1.5 flex-wrap">
-                                        {editingId === product.id ? (
+                                        {isEditing ? (
                                           FLAGS.map(({ key, label }) => {
                                             const active = !!(editData[key] ?? product[key]);
                                             return (
@@ -493,7 +546,7 @@ export const AdminDashboard = () => {
                                       </div>
                                     </td>
 
-                                    {/* Stock toggle — click directly */}
+                                    {/* Stock toggle */}
                                     <td className="px-6 py-3">
                                       <button type="button" onClick={() => toggleStock(product)}
                                         className={`flex items-center gap-1.5 text-[10px] font-bold px-3 py-1 rounded-full border transition-all
@@ -507,40 +560,74 @@ export const AdminDashboard = () => {
 
                                     {/* Price */}
                                     <td className="px-6 py-3 text-right">
-                                      {editingId === product.id ? (
+                                      {isEditing ? (
                                         <div className="flex items-center justify-end gap-1">
                                           <span className="text-stone-400 text-sm">₹</span>
                                           <input type="number" value={editData.price ?? product.price}
                                             onChange={e => setEditData(d => ({ ...d, price: Number(e.target.value) }))}
-                                            className="w-20 border border-stone-200 rounded-lg px-2 py-1 text-sm font-bold text-right focus:outline-none" />
+                                            className="w-20 border border-stone-200 rounded-lg px-2 py-1 text-sm font-bold text-right focus:outline-none focus:ring-2 focus:ring-brand-deep-green/20" />
                                         </div>
                                       ) : (
                                         <span className="font-bold text-brand-deep-green text-sm">₹{product.price.toLocaleString()}</span>
                                       )}
                                     </td>
 
-                                    {/* Actions */}
+                                    {/* ── ACTIONS ── */}
                                     <td className="px-6 py-3">
                                       <div className="flex items-center justify-center gap-2">
-                                        {editingId === product.id ? (
+                                        {isEditing ? (
+                                          /* Editing mode: Save + Cancel */
                                           <>
-                                            <button onClick={() => saveEdit(product.id)}
-                                              className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-lg hover:bg-emerald-200 flex items-center justify-center">
+                                            <button
+                                              onClick={() => saveEdit(product.id)}
+                                              title="Save changes"
+                                              className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-lg hover:bg-emerald-200 flex items-center justify-center transition-colors">
                                               <Check size={14} />
                                             </button>
-                                            <button onClick={() => { setEditingId(null); setEditData({}); }}
-                                              className="w-8 h-8 bg-stone-100 text-stone-400 rounded-lg hover:bg-stone-200 flex items-center justify-center">
+                                            <button
+                                              onClick={() => { setEditingId(null); setEditData({}); }}
+                                              title="Cancel"
+                                              className="w-8 h-8 bg-stone-100 text-stone-400 rounded-lg hover:bg-stone-200 flex items-center justify-center transition-colors">
                                               <X size={14} />
                                             </button>
                                           </>
+                                        ) : isConfirmingDelete ? (
+                                          /* Delete confirm mode */
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="text-[10px] text-red-500 font-bold whitespace-nowrap">Delete?</span>
+                                            <button
+                                              onClick={() => handleDelete(product)}
+                                              title="Confirm delete"
+                                              className="w-8 h-8 bg-red-100 text-red-600 rounded-lg hover:bg-red-500 hover:text-white flex items-center justify-center transition-colors">
+                                              <Check size={14} />
+                                            </button>
+                                            <button
+                                              onClick={() => setDeleteConfirmId(null)}
+                                              title="Cancel delete"
+                                              className="w-8 h-8 bg-stone-100 text-stone-400 rounded-lg hover:bg-stone-200 flex items-center justify-center transition-colors">
+                                              <X size={14} />
+                                            </button>
+                                          </div>
                                         ) : (
-                                          <button onClick={() => startEdit(product)}
-                                            className="w-8 h-8 bg-brand-light-green text-brand-deep-green rounded-lg hover:bg-brand-deep-green hover:text-white transition-all flex items-center justify-center">
-                                            <Edit3 size={14} />
-                                          </button>
+                                          /* Default mode: Edit + Delete */
+                                          <>
+                                            <button
+                                              onClick={() => startEdit(product)}
+                                              title="Edit product"
+                                              className="w-8 h-8 bg-brand-light-green text-brand-deep-green rounded-lg hover:bg-brand-deep-green hover:text-white transition-all flex items-center justify-center">
+                                              <Edit3 size={14} />
+                                            </button>
+                                            <button
+                                              onClick={() => { setDeleteConfirmId(product.id); setEditingId(null); }}
+                                              title="Delete product"
+                                              className="w-8 h-8 bg-red-50 text-red-400 rounded-lg hover:bg-red-500 hover:text-white transition-all flex items-center justify-center">
+                                              <Trash2 size={14} />
+                                            </button>
+                                          </>
                                         )}
                                       </div>
                                     </td>
+
                                   </tr>
                                 );
                               })}

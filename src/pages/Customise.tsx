@@ -16,19 +16,19 @@ const bangleTypes = [
 ];
 
 const colorThemes = [
-  { name: 'Gold',        color: '#D4AF37' },
-  { name: 'Silver',      color: '#C0C0C0' },
-  { name: 'Rose Gold',   color: '#E0BFB8' },
-  { name: 'Antique Gold',color: '#B8860B' },
-  { name: 'White Gold',  color: '#F5F5DC' },
-  { name: 'Champagne',   color: '#F7E7CE' },
-  { name: 'Copper',      color: '#B87333' },
-  { name: 'Bronze',      color: '#CD7F32' },
-  { name: 'Platinum',    color: '#E5E4E2' },
-  { name: 'Black',       color: '#2C2C2C' },
-  { name: 'Red',         color: '#DC143C' },
-  { name: 'Blue',        color: '#4169E1' },
-  { name: 'Green',       color: '#228B22' },
+  { name: 'Gold',         color: '#D4AF37' },
+  { name: 'Silver',       color: '#C0C0C0' },
+  { name: 'Rose Gold',    color: '#E0BFB8' },
+  { name: 'Antique Gold', color: '#B8860B' },
+  { name: 'White Gold',   color: '#F5F5DC' },
+  { name: 'Champagne',    color: '#F7E7CE' },
+  { name: 'Copper',       color: '#B87333' },
+  { name: 'Bronze',       color: '#CD7F32' },
+  { name: 'Platinum',     color: '#E5E4E2' },
+  { name: 'Black',        color: '#2C2C2C' },
+  { name: 'Red',          color: '#DC143C' },
+  { name: 'Blue',         color: '#4169E1' },
+  { name: 'Green',        color: '#228B22' },
 ];
 
 export const Customise = () => {
@@ -91,100 +91,22 @@ export const Customise = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        {/*
+          Layout:
+          ┌──────────────────────┬──────────────────┐
+          │  LEFT: Form          │  RIGHT: Preview  │  ← Desktop
+          │  (upload at top,     │  (sticky,        │
+          │   then all steps)    │   only preview)  │
+          └──────────────────────┴──────────────────┘
 
-          {/* ── LEFT: Preview ─────────────────────────────────────────────── */}
-          <div className="space-y-6">
+          Mobile: form only, stacked top-to-bottom (upload first)
+        */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-10 items-start">
 
-            {/* Main preview box */}
-            <div className="aspect-square rounded-2xl overflow-hidden bg-white shadow-sm border border-stone-100 max-w-md mx-auto relative">
-              {outfitPreview ? (
-                /* Show uploaded outfit photo as the preview background */
-                <>
-                  <img src={outfitPreview} alt="Your outfit" className="w-full h-full object-cover" />
-                  {/* Overlay with design summary */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-black/50 backdrop-blur-sm p-4 text-white">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs opacity-80 mb-0.5">Your Custom Design</p>
-                        <p className="font-serif font-bold">{selectedColor.name} · Size {selectedSize} · {hand} Hand</p>
-                      </div>
-                      <div
-                        className="w-8 h-8 rounded-full border-2 border-white shadow-lg flex-shrink-0"
-                        style={{ backgroundColor: selectedColor.color }}
-                      />
-                    </div>
-                    <p className="text-lg font-bold mt-2">₹{totalPrice.toLocaleString()}</p>
-                  </div>
-                </>
-              ) : (
-                /* Default design preview when no photo uploaded */
-                <div className="w-full h-full bg-gradient-to-br from-stone-50 to-stone-100 flex items-center justify-center p-8">
-                  <div className="text-center space-y-5">
-                    {/* Bangle visual */}
-                    <div className="relative flex justify-center items-center">
-                      <div
-                        className="w-24 h-24 rounded-full border-4 shadow-lg flex items-center justify-center"
-                        style={{ borderColor: selectedColor.color, backgroundColor: `${selectedColor.color}20` }}
-                      >
-                        <div className="w-14 h-14 rounded-full border-2" style={{ borderColor: selectedColor.color }} />
-                        <div className="absolute -top-2 -right-2 bg-brand-deep-green text-white text-xs px-2 py-1 rounded-full font-bold">
-                          {selectedSize}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="font-serif font-bold text-stone-800">Your Custom Design</h3>
-                      <p className="text-xs text-stone-500">{selectedColor.name} · {hand} Hand</p>
-                      <div className="flex flex-wrap justify-center gap-1 mt-1">
-                        {Object.entries(quantities).filter(([, qty]) => qty > 0).map(([type, qty]) => (
-                          <span key={type} className="bg-stone-200 px-2 py-0.5 rounded text-xs capitalize">
-                            {type} ×{qty}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="p-2 bg-brand-light-green rounded-lg">
-                      <p className="text-sm font-bold text-brand-deep-green">₹{totalPrice.toLocaleString()}</p>
-                    </div>
-                    <p className="text-xs text-stone-400 italic">Upload your outfit photo to see how it looks ↑</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Inspiration gallery */}
-            <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
-              {[
-                { img: customImg1, name: 'Kundan Bangles' },
-                { img: customImg2, name: 'Kundan Jhumkas' },
-                { img: customImg3, name: 'Modern Earrings' },
-                { img: customImg4, name: 'Silk Thread' },
-              ].map((item, i) => (
-                <div key={i} className="aspect-square rounded-lg overflow-hidden border border-stone-200 cursor-pointer hover:border-brand-deep-green transition-colors relative group">
-                  <img src={item.img} alt={item.name} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <p className="text-white text-xs font-bold text-center px-2">{item.name}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* How it works — simplified */}
-            <div className="bg-white rounded-2xl p-5 border border-stone-100 max-w-md mx-auto">
-              <h4 className="font-serif font-bold text-sm mb-3 text-stone-800">How It Works</h4>
-              <div className="space-y-2 text-xs text-stone-600">
-                <p>📸 <span className="font-medium">Upload your outfit</span> — we'll match your jewellery to your look.</p>
-                <p>🎨 <span className="font-medium">Choose size, type & colour</span> — handcrafted by our artisans.</p>
-                <p>🚚 <span className="font-medium">Delivered in 7–10 days</span> — quality checked before shipping.</p>
-              </div>
-            </div>
-          </div>
-
-          {/* ── RIGHT: Customisation Form ──────────────────────────────────── */}
+          {/* ── LEFT: Form ─────────────────────────────────────────────────── */}
           <div className="bg-white p-8 md:p-10 rounded-3xl shadow-xl border border-stone-100 space-y-9">
 
-            {/* STEP 1 — Upload outfit photo (moved to top) */}
+            {/* STEP 1 — Upload outfit photo */}
             <section>
               <h3 className="text-sm font-bold uppercase tracking-widest text-stone-700 mb-4">
                 1. Upload Outfit Photo
@@ -192,8 +114,7 @@ export const Customise = () => {
               </h3>
 
               {outfitPreview ? (
-                /* Show thumbnail with remove button */
-                <div className="relative w-full h-32 rounded-2xl overflow-hidden border-2 border-brand-deep-green">
+                <div className="relative w-full h-36 rounded-2xl overflow-hidden border-2 border-brand-deep-green">
                   <img src={outfitPreview} alt="Outfit preview" className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                     <button
@@ -208,7 +129,7 @@ export const Customise = () => {
                   </div>
                 </div>
               ) : (
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-stone-200 rounded-2xl cursor-pointer hover:bg-stone-50 hover:border-brand-deep-green/40 transition-colors">
+                <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-stone-200 rounded-2xl cursor-pointer hover:bg-stone-50 hover:border-brand-deep-green/40 transition-colors">
                   <Upload className="w-7 h-7 mb-2 text-stone-400" />
                   <p className="text-sm text-stone-500 font-medium">Click to upload outfit photo</p>
                   <p className="text-xs text-stone-400 mt-1">PNG, JPG or JPEG · Max 5MB</p>
@@ -225,7 +146,11 @@ export const Customise = () => {
                   <button
                     key={size}
                     onClick={() => setSelectedSize(size)}
-                    className={`w-12 h-12 rounded-full border-2 flex items-center justify-center text-sm font-medium transition-all ${selectedSize === size ? 'border-brand-deep-green bg-brand-deep-green text-white' : 'border-stone-200 hover:border-brand-gold'}`}
+                    className={`w-12 h-12 rounded-full border-2 flex items-center justify-center text-sm font-medium transition-all ${
+                      selectedSize === size
+                        ? 'border-brand-deep-green bg-brand-deep-green text-white'
+                        : 'border-stone-200 hover:border-brand-gold'
+                    }`}
                   >
                     {size}
                   </button>
@@ -241,7 +166,11 @@ export const Customise = () => {
                   <button
                     key={option}
                     onClick={() => setHand(option)}
-                    className={`flex-grow py-3 rounded-full border-2 font-bold transition-all ${hand === option ? 'border-brand-deep-green bg-brand-deep-green text-white' : 'border-stone-200 hover:border-brand-gold'}`}
+                    className={`flex-grow py-3 rounded-full border-2 font-bold transition-all ${
+                      hand === option
+                        ? 'border-brand-deep-green bg-brand-deep-green text-white'
+                        : 'border-stone-200 hover:border-brand-gold'
+                    }`}
                   >
                     {option} Hand
                   </button>
@@ -262,7 +191,7 @@ export const Customise = () => {
                     <div className="flex items-center gap-4">
                       <button onClick={() => handleQuantityChange(type.id, -1)} className="w-8 h-8 rounded-full bg-white border border-stone-200 flex items-center justify-center hover:bg-stone-50 text-lg font-bold">−</button>
                       <span className="w-4 text-center font-bold text-sm">{quantities[type.id]}</span>
-                      <button onClick={() => handleQuantityChange(type.id, 1)}  className="w-8 h-8 rounded-full bg-white border border-stone-200 flex items-center justify-center hover:bg-stone-50 text-lg font-bold">+</button>
+                      <button onClick={() => handleQuantityChange(type.id,  1)} className="w-8 h-8 rounded-full bg-white border border-stone-200 flex items-center justify-center hover:bg-stone-50 text-lg font-bold">+</button>
                     </div>
                   </div>
                 ))}
@@ -321,6 +250,93 @@ export const Customise = () => {
                 <ShoppingCart size={20} />
                 Add to Cart
               </button>
+            </div>
+
+          </div>
+
+          {/* ── RIGHT: Preview — Desktop only ──────────────────────────────── */}
+          <div className="hidden lg:flex flex-col gap-6 sticky top-24">
+
+            {/* Live preview box */}
+            <div className="aspect-square rounded-2xl overflow-hidden bg-white shadow-sm border border-stone-100 relative">
+              {outfitPreview ? (
+                <>
+                  <img src={outfitPreview} alt="Your outfit" className="w-full h-full object-cover" />
+                  {/* Overlay summary */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/50 backdrop-blur-sm p-4 text-white">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs opacity-80 mb-0.5">Your Custom Design</p>
+                        <p className="font-serif font-bold text-sm">{selectedColor.name} · Size {selectedSize} · {hand} Hand</p>
+                      </div>
+                      <div
+                        className="w-8 h-8 rounded-full border-2 border-white shadow-lg flex-shrink-0"
+                        style={{ backgroundColor: selectedColor.color }}
+                      />
+                    </div>
+                    <p className="text-lg font-bold mt-2">₹{totalPrice.toLocaleString()}</p>
+                  </div>
+                </>
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-stone-50 to-stone-100 flex items-center justify-center p-8">
+                  <div className="text-center space-y-5">
+                    {/* Bangle visual */}
+                    <div className="relative flex justify-center items-center">
+                      <div
+                        className="w-24 h-24 rounded-full border-4 shadow-lg flex items-center justify-center"
+                        style={{ borderColor: selectedColor.color, backgroundColor: `${selectedColor.color}20` }}
+                      >
+                        <div className="w-14 h-14 rounded-full border-2" style={{ borderColor: selectedColor.color }} />
+                        <div className="absolute -top-2 -right-2 bg-brand-deep-green text-white text-xs px-2 py-1 rounded-full font-bold">
+                          {selectedSize}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="font-serif font-bold text-stone-800">Your Custom Design</h3>
+                      <p className="text-xs text-stone-500">{selectedColor.name} · {hand} Hand</p>
+                      <div className="flex flex-wrap justify-center gap-1 mt-1">
+                        {Object.entries(quantities).filter(([, qty]) => qty > 0).map(([type, qty]) => (
+                          <span key={type} className="bg-stone-200 px-2 py-0.5 rounded text-xs capitalize">
+                            {type} ×{qty}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="p-2 bg-brand-light-green rounded-lg">
+                      <p className="text-sm font-bold text-brand-deep-green">₹{totalPrice.toLocaleString()}</p>
+                    </div>
+                    <p className="text-xs text-stone-400 italic">Upload your outfit photo to see how it looks ↑</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Inspiration gallery */}
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { img: customImg1, name: 'Kundan Bangles'  },
+                { img: customImg2, name: 'Kundan Jhumkas'  },
+                { img: customImg3, name: 'Modern Earrings' },
+                { img: customImg4, name: 'Silk Thread'     },
+              ].map((item, i) => (
+                <div key={i} className="aspect-square rounded-lg overflow-hidden border border-stone-200 cursor-pointer hover:border-brand-deep-green transition-colors relative group">
+                  <img src={item.img} alt={item.name} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <p className="text-white text-[10px] font-bold text-center px-1">{item.name}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* How it works */}
+            <div className="bg-white rounded-2xl p-5 border border-stone-100">
+              <h4 className="font-serif font-bold text-sm mb-3 text-stone-800">How It Works</h4>
+              <div className="space-y-2 text-xs text-stone-600">
+                <p>📸 <span className="font-medium">Upload your outfit</span> — we'll match your jewellery to your look.</p>
+                <p>🎨 <span className="font-medium">Choose size, type & colour</span> — handcrafted by our artisans.</p>
+                <p>🚚 <span className="font-medium">Delivered in 7–10 days</span> — quality checked before shipping.</p>
+              </div>
             </div>
 
           </div>

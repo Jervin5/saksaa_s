@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { ProductCard } from '../components/ProductCard';
 import { Filter, ChevronDown, SlidersHorizontal, Search, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -12,6 +12,7 @@ import heroImg6 from '../images/traditional_jhumkas/traditional_jhumkas1.png';
 import prodImg1 from '../images/kundan_modern_earings/kundan_modern_earings1.png';
 import prodImg2 from '../images/silk_thread_jhumkas/silk_thread_jhumkas1.png';
 import prodImg3 from '../images/Kundan_Bangels/Kundan_Bangels10.png';
+import prodImg4 from '../images/studs/studs7.png';
 import prodImg5 from '../images/Kundan_Bangels/Kundan_Bangels20.png';
 
 const categories = ['Bangles', 'Earrings'];
@@ -23,7 +24,7 @@ const subCategories: Record<string, string[]> = {
 
 const subCategoryImages: Record<string, Record<string, string>> = {
   Earrings: {
-    'Studs':               prodImg1,
+    'Studs':               prodImg4,
     'Jhumkas':             heroImg5,
     'Modern Jhumkas':      prodImg1,
     'Silk Thread Jhumkas': prodImg2,
@@ -47,15 +48,29 @@ const sizes = ['2.2', '2.4', '2.6', '2.8', '2.10', '2.12'];
 
 export const Shop = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isMobile, setIsMobile]         = useState(false);
   const [currentPage, setCurrentPage]   = useState(1);
   const [allProducts, setAllProducts]   = useState(() => [...shopProducts, ...getLocalProducts()]);
 
+  // Scroll to top whenever the Shop component mounts or location changes
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [location.pathname, location.search]); // Trigger on path or search params change
+
+  // Additional scroll to top on component mount
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, []);
+
   // Re-read localStorage every time Shop page is visited
   useEffect(() => {
     setAllProducts([...shopProducts, ...getLocalProducts()]);
   }, []);
+
   const [expandedSections, setExpandedSections] = useState({
     categories: true,
     priceRange: true,
@@ -76,6 +91,10 @@ export const Shop = () => {
     return () => window.removeEventListener('resize', check);
   }, []);
 
+  // Scroll to top when filters change or page changes
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [currentPage, activeCategory, activeSubCategory, activePriceRange, activeSize]);
 
   const filteredProducts = useMemo(() => {
     return allProducts.filter(product => {
