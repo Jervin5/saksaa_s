@@ -12,7 +12,7 @@ import heroImg6 from '../images/traditional_jhumkas/traditional_jhumkas1.png';
 import prodImg1 from '../images/kundan_modern_earings/kundan_modern_earings1.png';
 import prodImg2 from '../images/silk_thread_jhumkas/silk_thread_jhumkas1.png';
 import prodImg3 from '../images/Kundan_Bangels/Kundan_Bangels10.png';
-import prodImg4 from '../images/studs/studs7.png';
+import prodImg4 from '../images/studs/studs7.jpg';
 import prodImg5 from '../images/Kundan_Bangels/Kundan_Bangels20.png';
 
 const categories = ['Bangles', 'Earrings'];
