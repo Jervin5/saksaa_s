@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { Upload, ShoppingCart, Check, X } from 'lucide-react';
+import { Upload, ShoppingCart, Check, X, Send } from 'lucide-react';
 import { useCart } from '../CartContext';
+import { apiService } from '../services/apiService';
+import { useNavigate } from 'react-router-dom';
 
 import customImg1 from '../images/Kundan_Bangels/Kundan_Bangels4.png';
 import customImg2 from '../images/kundan_jhumkas/kundan_jhumkas3.png';
@@ -14,7 +16,6 @@ const bangleTypes = [
   { id: 'broad',   name: 'Broad 20mm',   price: 200 },
   { id: 'hanging', name: 'Hanging 10mm', price: 150 },
 ];
-
 const colorThemes = [
   { name: 'Gold',         color: '#D4AF37' },
   { name: 'Silver',       color: '#C0C0C0' },
@@ -30,9 +31,12 @@ const colorThemes = [
   { name: 'Blue',         color: '#4169E1' },
   { name: 'Green',        color: '#228B22' },
 ];
+const occasions = ['Wedding', 'Festival', 'Casual', 'Party Wear', 'Gifting', 'Other'];
+const budgetRanges = ['Under ₹500', '₹500 - ₹1,000', '₹1,000 - ₹2,000', '₹2,000 - ₹5,000', 'Over ₹5,000'];
 
 export const Customise = () => {
   const { addToCart } = useCart();
+  const navigate      = useNavigate();
   const [selectedSize,  setSelectedSize]  = useState(sizes[1]);
   const [hand,          setHand]          = useState<'One' | 'Both'>('Both');
   const [quantities,    setQuantities]    = useState<Record<string, number>>({ normal: 2, broad: 1, hanging: 1 });
@@ -40,6 +44,13 @@ export const Customise = () => {
   const [outfitPhoto,   setOutfitPhoto]   = useState<File | null>(null);
   const [outfitPreview, setOutfitPreview] = useState<string | null>(null);
   const [comment,       setComment]       = useState('');
+  const [occasion,      setOccasion]      = useState('');
+  const [budget,        setBudget]        = useState('');
+
+  // ── Submission state ──────────────────────────────────────────────────────
+  const [submitting,  setSubmitting]  = useState(false);
+  const [submitted,   setSubmitted]   = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const basePrice = 1200;
   const totalPrice = useMemo(() => {
@@ -47,9 +58,8 @@ export const Customise = () => {
     return (basePrice + typesTotal) * (hand === 'Both' ? 2 : 1);
   }, [quantities, hand]);
 
-  const handleQuantityChange = (id: string, delta: number) => {
+  const handleQuantityChange = (id: string, delta: number) =>
     setQuantities(prev => ({ ...prev, [id]: Math.max(0, prev[id] + delta) }));
-  };
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
@@ -65,19 +75,79 @@ export const Customise = () => {
 
   const removePhoto = () => { setOutfitPhoto(null); setOutfitPreview(null); };
 
+  /** Add to cart (local) — for immediate checkout without submitting a request */
   const handleAddToCart = () => {
     const customProduct = {
-      id: `custom-${Date.now()}`,
-      name: `Customised Bangle Set (${selectedSize}, ${hand} Hand)`,
-      price: totalPrice,
-      category: 'Bangles' as const,
-      image: 'https://images.unsplash.com/photo-1515562141207-7a18b5ce7142?auto=format&fit=crop&q=80&w=800',
-      images: ['https://images.unsplash.com/photo-1515562141207-7a18b5ce7142?auto=format&fit=crop&q=80&w=800'],
+      id:          `custom-${Date.now()}`,
+      name:        `Customised Bangle Set (${selectedSize}, ${hand} Hand, ${selectedColor.name})`,
+      price:       totalPrice,
+      category:    'Bangles' as const,
+      image:       customImg1,
+      images:      [customImg1],
       description: `Customised set with ${selectedColor.name} theme. Hand: ${hand}, Size: ${selectedSize}.`,
     };
     addToCart(customProduct, 1, selectedSize);
-    alert('Customised set added to cart!');
+    navigate('/cart');
   };
+
+  /** Submit custom request to backend */
+  const handleSubmitRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const user = apiService.getCurrentUser();
+    if (!user) { navigate('/login'); return; }
+
+    setSubmitting(true);
+    setSubmitError('');
+    try {
+      const preferences = [
+        `Size: ${selectedSize}`,
+        `Hand: ${hand}`,
+        `Color: ${selectedColor.name}`,
+        ...bangleTypes.filter(t => quantities[t.id] > 0).map(t => `${t.name}: ${quantities[t.id]}`),
+        comment ? `Notes: ${comment}` : '',
+      ].filter(Boolean).join(' | ');
+
+      await apiService.submitCustomRequest({
+        occasion:     occasion || 'General',
+        budgetRange:  budget || 'Not specified',
+        preferences,
+        outfitImage:  outfitPhoto,
+      });
+      setSubmitted(true);
+    } catch (err: any) {
+      setSubmitError(err.message || 'Failed to submit request. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ── Success screen ──────────────────────────────────────────────────────────
+  if (submitted) {
+    return (
+      <div className="bg-brand-bg-green min-h-screen flex items-center justify-center">
+        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+          className="bg-white rounded-3xl shadow-xl p-12 max-w-md text-center">
+          <div className="w-20 h-20 bg-brand-light-green rounded-full flex items-center justify-center mx-auto mb-6">
+            <Check size={36} className="text-brand-deep-green" />
+          </div>
+          <h2 className="text-3xl font-serif font-bold mb-4">Request Submitted!</h2>
+          <p className="text-stone-500 mb-8 leading-relaxed">
+            Our artisans will review your customisation request and contact you within 24 hours to discuss the details.
+          </p>
+          <div className="space-y-3">
+            <button onClick={() => navigate('/account')}
+              className="w-full bg-stone-900 text-white py-3 rounded-full font-bold hover:bg-brand-deep-green transition-all">
+              View My Requests
+            </button>
+            <button onClick={() => { setSubmitted(false); }}
+              className="w-full border border-stone-200 text-stone-600 py-3 rounded-full font-medium hover:bg-stone-50 transition-colors">
+              Submit Another Request
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-brand-bg-green min-h-screen py-12">
@@ -87,258 +157,220 @@ export const Customise = () => {
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-serif font-bold mb-4">Customise Your Set</h1>
           <p className="text-stone-500 max-w-xl mx-auto">
-            Design your dream bangle set — choose your style, size, and colour.
+            Design your dream bangle set — choose your style, size, and colour, then submit a request to our artisans.
           </p>
         </div>
 
-        {/*
-          Layout:
-          ┌──────────────────────┬──────────────────┐
-          │  LEFT: Form          │  RIGHT: Preview  │  ← Desktop
-          │  (upload at top,     │  (sticky,        │
-          │   then all steps)    │   only preview)  │
-          └──────────────────────┴──────────────────┘
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
 
-          Mobile: form only, stacked top-to-bottom (upload first)
-        */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-10 items-start">
+          {/* LEFT: Customisation Form */}
+          <div className="lg:col-span-2 space-y-8">
 
-          {/* ── LEFT: Form ─────────────────────────────────────────────────── */}
-          <div className="bg-white p-8 md:p-10 rounded-3xl shadow-xl border border-stone-100 space-y-9">
-
-            {/* STEP 1 — Upload outfit photo */}
-            <section>
-              <h3 className="text-sm font-bold uppercase tracking-widest text-stone-700 mb-4">
-                1. Upload Outfit Photo
-                <span className="ml-2 text-xs font-normal text-stone-400 normal-case tracking-normal">(optional)</span>
-              </h3>
-
+            {/* Upload outfit photo */}
+            <div className="bg-white p-8 rounded-3xl shadow-sm border border-stone-100">
+              <h2 className="text-2xl font-serif font-bold mb-6">Upload Your Outfit Photo</h2>
               {outfitPreview ? (
-                <div className="relative w-full h-36 rounded-2xl overflow-hidden border-2 border-brand-deep-green">
-                  <img src={outfitPreview} alt="Outfit preview" className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={removePhoto}
-                      className="bg-white text-stone-900 text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1 hover:bg-red-50 hover:text-red-600 transition-colors"
-                    >
-                      <X size={12} /> Remove photo
-                    </button>
-                  </div>
-                  <div className="absolute top-2 right-2 bg-brand-deep-green text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                    <Check size={10} /> Uploaded
+                <div className="relative w-full aspect-video rounded-xl overflow-hidden">
+                  <img src={outfitPreview} alt="Outfit" className="w-full h-full object-cover" />
+                  <button onClick={removePhoto}
+                    className="absolute top-3 right-3 bg-white rounded-full p-2 shadow-lg hover:bg-red-50 transition-colors">
+                    <X size={16} className="text-red-500" />
+                  </button>
+                  <div className="absolute bottom-3 left-3 bg-brand-deep-green text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-1 font-bold">
+                    <Check size={12} /> Photo uploaded
                   </div>
                 </div>
               ) : (
-                <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-stone-200 rounded-2xl cursor-pointer hover:bg-stone-50 hover:border-brand-deep-green/40 transition-colors">
-                  <Upload className="w-7 h-7 mb-2 text-stone-400" />
-                  <p className="text-sm text-stone-500 font-medium">Click to upload outfit photo</p>
-                  <p className="text-xs text-stone-400 mt-1">PNG, JPG or JPEG · Max 5MB</p>
-                  <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+                <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-stone-200 rounded-2xl cursor-pointer hover:border-brand-deep-green hover:bg-brand-bg-green transition-all">
+                  <Upload size={32} className="text-stone-300 mb-3" />
+                  <p className="text-stone-500 font-medium">Click to upload your outfit photo</p>
+                  <p className="text-stone-400 text-xs mt-1">JPEG, PNG, WEBP (max 5MB)</p>
+                  <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
                 </label>
               )}
-            </section>
+            </div>
 
-            {/* STEP 2 — Size */}
-            <section>
-              <h3 className="text-sm font-bold uppercase tracking-widest text-stone-700 mb-4">2. Select Bangle Size</h3>
-              <div className="flex flex-wrap gap-3">
-                {sizes.map(size => (
-                  <button
-                    key={size}
-                    onClick={() => setSelectedSize(size)}
-                    className={`w-12 h-12 rounded-full border-2 flex items-center justify-center text-sm font-medium transition-all ${
-                      selectedSize === size
-                        ? 'border-brand-deep-green bg-brand-deep-green text-white'
-                        : 'border-stone-200 hover:border-brand-gold'
-                    }`}
-                  >
-                    {size}
-                  </button>
-                ))}
+            {/* Bangle customisation */}
+            <div className="bg-white p-8 rounded-3xl shadow-sm border border-stone-100">
+              <h2 className="text-2xl font-serif font-bold mb-6">Configure Your Set</h2>
+
+              {/* Size */}
+              <div className="mb-6">
+                <label className="block text-sm font-bold uppercase tracking-wider text-stone-700 mb-3">Bangle Size</label>
+                <div className="flex flex-wrap gap-3">
+                  {sizes.map(s => (
+                    <button key={s} onClick={() => setSelectedSize(s)}
+                      className={`w-12 h-12 rounded-full border-2 flex items-center justify-center text-sm font-medium transition-all ${
+                        selectedSize === s
+                          ? 'border-brand-deep-green bg-brand-deep-green text-white'
+                          : 'border-stone-200 hover:border-brand-deep-green'
+                      }`}>{s}</button>
+                  ))}
+                </div>
               </div>
-            </section>
 
-            {/* STEP 3 — Hand */}
-            <section>
-              <h3 className="text-sm font-bold uppercase tracking-widest text-stone-700 mb-4">3. Hand Preference</h3>
-              <div className="flex gap-4">
-                {(['One', 'Both'] as const).map(option => (
-                  <button
-                    key={option}
-                    onClick={() => setHand(option)}
-                    className={`flex-grow py-3 rounded-full border-2 font-bold transition-all ${
-                      hand === option
-                        ? 'border-brand-deep-green bg-brand-deep-green text-white'
-                        : 'border-stone-200 hover:border-brand-gold'
-                    }`}
-                  >
-                    {option} Hand
-                  </button>
-                ))}
+              {/* Hand */}
+              <div className="mb-6">
+                <label className="block text-sm font-bold uppercase tracking-wider text-stone-700 mb-3">Number of Hands</label>
+                <div className="flex gap-4">
+                  {(['One', 'Both'] as const).map(h => (
+                    <button key={h} onClick={() => setHand(h)}
+                      className={`flex-1 py-3 rounded-xl border-2 font-bold transition-all ${
+                        hand === h
+                          ? 'border-brand-deep-green bg-brand-light-green text-brand-deep-green'
+                          : 'border-stone-200 text-stone-600 hover:border-stone-300'
+                      }`}>{h} Hand</button>
+                  ))}
+                </div>
               </div>
-            </section>
 
-            {/* STEP 4 — Bangle types */}
-            <section>
-              <h3 className="text-sm font-bold uppercase tracking-widest text-stone-700 mb-4">4. Bangle Types & Quantities</h3>
-              <div className="space-y-3">
-                {bangleTypes.map(type => (
-                  <div key={type.id} className="flex items-center justify-between p-4 bg-brand-bg-green rounded-xl">
-                    <div>
-                      <p className="font-bold text-stone-800 text-sm">{type.name}</p>
-                      <p className="text-xs text-stone-500">+₹{type.price} per piece</p>
+              {/* Bangle types */}
+              <div className="mb-6">
+                <label className="block text-sm font-bold uppercase tracking-wider text-stone-700 mb-3">Bangle Types & Quantity</label>
+                <div className="space-y-4">
+                  {bangleTypes.map(type => (
+                    <div key={type.id} className="flex items-center justify-between p-4 bg-brand-bg-green rounded-xl">
+                      <div>
+                        <p className="font-bold text-stone-800">{type.name}</p>
+                        <p className="text-sm text-stone-500">₹{type.price} per bangle</p>
+                      </div>
+                      <div className="flex items-center border border-stone-200 rounded-full p-1 bg-white">
+                        <button onClick={() => handleQuantityChange(type.id, -1)}
+                          className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-stone-100">-</button>
+                        <span className="w-8 text-center font-bold text-sm">{quantities[type.id]}</span>
+                        <button onClick={() => handleQuantityChange(type.id, 1)}
+                          className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-stone-100">+</button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <button onClick={() => handleQuantityChange(type.id, -1)} className="w-8 h-8 rounded-full bg-white border border-stone-200 flex items-center justify-center hover:bg-stone-50 text-lg font-bold">−</button>
-                      <span className="w-4 text-center font-bold text-sm">{quantities[type.id]}</span>
-                      <button onClick={() => handleQuantityChange(type.id,  1)} className="w-8 h-8 rounded-full bg-white border border-stone-200 flex items-center justify-center hover:bg-stone-50 text-lg font-bold">+</button>
-                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Colour */}
+              <div>
+                <label className="block text-sm font-bold uppercase tracking-wider text-stone-700 mb-3">
+                  Colour Theme — <span className="text-brand-deep-green">{selectedColor.name}</span>
+                </label>
+                <div className="flex flex-wrap gap-3">
+                  {colorThemes.map(theme => (
+                    <button key={theme.name} onClick={() => setSelectedColor(theme)} title={theme.name}
+                      className={`w-8 h-8 rounded-full border-4 transition-all ${
+                        selectedColor.name === theme.name ? 'border-brand-deep-green scale-110' : 'border-white shadow-sm hover:scale-105'
+                      }`}
+                      style={{ backgroundColor: theme.color }} />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Request details (occasion, budget, notes) */}
+            <div className="bg-white p-8 rounded-3xl shadow-sm border border-stone-100">
+              <h2 className="text-2xl font-serif font-bold mb-6">Request Details</h2>
+
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-bold uppercase tracking-widest text-stone-700 mb-3">Occasion</label>
+                  <div className="flex flex-wrap gap-3">
+                    {occasions.map(occ => (
+                      <button key={occ} onClick={() => setOccasion(occ)}
+                        className={`px-4 py-2 rounded-full text-sm font-medium border-2 transition-all ${
+                          occasion === occ
+                            ? 'bg-brand-deep-green text-white border-brand-deep-green'
+                            : 'border-stone-200 text-stone-600 hover:border-brand-deep-green'
+                        }`}>{occ}</button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold uppercase tracking-widest text-stone-700 mb-3">Budget Range</label>
+                  <div className="flex flex-wrap gap-3">
+                    {budgetRanges.map(b => (
+                      <button key={b} onClick={() => setBudget(b)}
+                        className={`px-4 py-2 rounded-full text-sm font-medium border-2 transition-all ${
+                          budget === b
+                            ? 'bg-brand-deep-green text-white border-brand-deep-green'
+                            : 'border-stone-200 text-stone-600 hover:border-brand-deep-green'
+                        }`}>{b}</button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold uppercase tracking-widest text-stone-700 mb-2">Additional Notes</label>
+                  <textarea rows={4} value={comment} onChange={e => setComment(e.target.value)}
+                    placeholder="Any specific design preferences, colours, or requirements?"
+                    className="w-full p-4 bg-brand-bg-green border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-deep-green/20 resize-none" />
+                </div>
+              </div>
+            </div>
+
+            {/* Inspiration images */}
+            <div className="bg-white p-8 rounded-3xl shadow-sm border border-stone-100">
+              <h2 className="text-2xl font-serif font-bold mb-6">Inspiration Designs</h2>
+              <div className="grid grid-cols-4 gap-4">
+                {[customImg1, customImg2, customImg3, customImg4].map((img, i) => (
+                  <div key={i} className="aspect-square rounded-xl overflow-hidden">
+                    <img src={img} alt={`Design ${i + 1}`} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
                   </div>
                 ))}
               </div>
-            </section>
-
-            {/* STEP 5 — Color */}
-            <section>
-              <h3 className="text-sm font-bold uppercase tracking-widest text-stone-700 mb-4">
-                5. Choose Colour
-                <span className="ml-2 text-xs font-normal text-stone-400 normal-case tracking-normal">— {selectedColor.name}</span>
-              </h3>
-              <div className="grid grid-cols-7 gap-3">
-                {colorThemes.map((theme, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setSelectedColor(theme)}
-                    title={theme.name}
-                    className={`aspect-square rounded-full border-2 transition-all flex items-center justify-center ${
-                      selectedColor.name === theme.name
-                        ? 'border-brand-deep-green scale-110 shadow-lg'
-                        : 'border-stone-300 hover:border-brand-gold hover:scale-105'
-                    }`}
-                    style={{ backgroundColor: theme.color }}
-                  >
-                    {selectedColor.name === theme.name && (
-                      <Check size={14} className="text-white drop-shadow-md" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            {/* STEP 6 — Special requests */}
-            <section>
-              <h3 className="text-sm font-bold uppercase tracking-widest text-stone-700 mb-4">6. Special Requests</h3>
-              <textarea
-                rows={3}
-                placeholder="E.g. I want more pearls on the broad bangles..."
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                className="w-full p-4 border border-stone-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-deep-green/20 resize-none text-sm"
-              />
-            </section>
-
-            {/* Price & CTA */}
-            <div className="pt-6 border-t border-stone-100 flex items-center justify-between gap-6">
-              <div>
-                <p className="text-xs text-stone-500 uppercase tracking-widest mb-1">Estimated Total</p>
-                <p className="text-3xl font-bold text-brand-deep-green">₹{totalPrice.toLocaleString()}</p>
-              </div>
-              <button
-                onClick={handleAddToCart}
-                className="flex-grow bg-stone-900 text-white py-4 rounded-full font-bold flex items-center justify-center gap-2 hover:bg-brand-deep-green transition-all shadow-lg"
-              >
-                <ShoppingCart size={20} />
-                Add to Cart
-              </button>
             </div>
-
           </div>
 
-          {/* ── RIGHT: Preview — Desktop only ──────────────────────────────── */}
-          <div className="hidden lg:flex flex-col gap-6 sticky top-24">
+          {/* RIGHT: Sticky summary */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-24 bg-white p-8 rounded-3xl shadow-xl border border-stone-100">
+              <h2 className="text-2xl font-serif font-bold mb-6">Your Custom Set</h2>
 
-            {/* Live preview box */}
-            <div className="aspect-square rounded-2xl overflow-hidden bg-white shadow-sm border border-stone-100 relative">
-              {outfitPreview ? (
-                <>
-                  <img src={outfitPreview} alt="Your outfit" className="w-full h-full object-cover" />
-                  {/* Overlay summary */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-black/50 backdrop-blur-sm p-4 text-white">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs opacity-80 mb-0.5">Your Custom Design</p>
-                        <p className="font-serif font-bold text-sm">{selectedColor.name} · Size {selectedSize} · {hand} Hand</p>
-                      </div>
-                      <div
-                        className="w-8 h-8 rounded-full border-2 border-white shadow-lg flex-shrink-0"
-                        style={{ backgroundColor: selectedColor.color }}
-                      />
-                    </div>
-                    <p className="text-lg font-bold mt-2">₹{totalPrice.toLocaleString()}</p>
-                  </div>
-                </>
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-stone-50 to-stone-100 flex items-center justify-center p-8">
-                  <div className="text-center space-y-5">
-                    {/* Bangle visual */}
-                    <div className="relative flex justify-center items-center">
-                      <div
-                        className="w-24 h-24 rounded-full border-4 shadow-lg flex items-center justify-center"
-                        style={{ borderColor: selectedColor.color, backgroundColor: `${selectedColor.color}20` }}
-                      >
-                        <div className="w-14 h-14 rounded-full border-2" style={{ borderColor: selectedColor.color }} />
-                        <div className="absolute -top-2 -right-2 bg-brand-deep-green text-white text-xs px-2 py-1 rounded-full font-bold">
-                          {selectedSize}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="font-serif font-bold text-stone-800">Your Custom Design</h3>
-                      <p className="text-xs text-stone-500">{selectedColor.name} · {hand} Hand</p>
-                      <div className="flex flex-wrap justify-center gap-1 mt-1">
-                        {Object.entries(quantities).filter(([, qty]) => qty > 0).map(([type, qty]) => (
-                          <span key={type} className="bg-stone-200 px-2 py-0.5 rounded text-xs capitalize">
-                            {type} ×{qty}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="p-2 bg-brand-light-green rounded-lg">
-                      <p className="text-sm font-bold text-brand-deep-green">₹{totalPrice.toLocaleString()}</p>
-                    </div>
-                    <p className="text-xs text-stone-400 italic">Upload your outfit photo to see how it looks ↑</p>
-                  </div>
+              <div className="space-y-3 mb-6 text-sm">
+                <div className="flex justify-between text-stone-600">
+                  <span>Size</span><span className="font-bold text-stone-800">{selectedSize}</span>
                 </div>
-              )}
-            </div>
-
-            {/* Inspiration gallery */}
-            <div className="grid grid-cols-4 gap-2">
-              {[
-                { img: customImg1, name: 'Kundan Bangles'  },
-                { img: customImg2, name: 'Kundan Jhumkas'  },
-                { img: customImg3, name: 'Modern Earrings' },
-                { img: customImg4, name: 'Silk Thread'     },
-              ].map((item, i) => (
-                <div key={i} className="aspect-square rounded-lg overflow-hidden border border-stone-200 cursor-pointer hover:border-brand-deep-green transition-colors relative group">
-                  <img src={item.img} alt={item.name} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <p className="text-white text-[10px] font-bold text-center px-1">{item.name}</p>
-                  </div>
+                <div className="flex justify-between text-stone-600">
+                  <span>Hands</span><span className="font-bold text-stone-800">{hand}</span>
                 </div>
-              ))}
-            </div>
-
-            {/* How it works */}
-            <div className="bg-white rounded-2xl p-5 border border-stone-100">
-              <h4 className="font-serif font-bold text-sm mb-3 text-stone-800">How It Works</h4>
-              <div className="space-y-2 text-xs text-stone-600">
-                <p>📸 <span className="font-medium">Upload your outfit</span> — we'll match your jewellery to your look.</p>
-                <p>🎨 <span className="font-medium">Choose size, type & colour</span> — handcrafted by our artisans.</p>
-                <p>🚚 <span className="font-medium">Delivered in 7–10 days</span> — quality checked before shipping.</p>
+                <div className="flex justify-between text-stone-600">
+                  <span>Colour</span>
+                  <span className="font-bold text-stone-800 flex items-center gap-2">
+                    <span className="w-4 h-4 rounded-full inline-block border border-stone-200" style={{ backgroundColor: selectedColor.color }} />
+                    {selectedColor.name}
+                  </span>
+                </div>
+                {bangleTypes.filter(t => quantities[t.id] > 0).map(t => (
+                  <div key={t.id} className="flex justify-between text-stone-600">
+                    <span>{t.name}</span>
+                    <span className="font-bold text-stone-800">×{quantities[t.id]} = ₹{(t.price * quantities[t.id]).toLocaleString()}</span>
+                  </div>
+                ))}
+                <div className="border-t border-stone-100 pt-3 flex justify-between text-xl font-bold">
+                  <span>Total Est.</span>
+                  <span className="text-brand-deep-green">₹{totalPrice.toLocaleString()}</span>
+                </div>
               </div>
-            </div>
 
+              {submitError && (
+                <p className="text-red-500 text-xs mb-4 bg-red-50 p-3 rounded-xl">{submitError}</p>
+              )}
+
+              {/* Submit to backend */}
+              <button onClick={handleSubmitRequest} disabled={submitting}
+                className="w-full bg-brand-deep-green text-white py-4 rounded-full font-bold flex items-center justify-center gap-2 hover:bg-opacity-90 transition-all shadow-lg mb-4 disabled:opacity-50">
+                <Send size={18} />
+                {submitting ? 'Submitting...' : 'Submit Request to Artisan'}
+              </button>
+
+              {/* Add to cart directly */}
+              <button onClick={handleAddToCart}
+                className="w-full border-2 border-stone-900 text-stone-900 py-4 rounded-full font-bold flex items-center justify-center gap-2 hover:bg-stone-900 hover:text-white transition-all">
+                <ShoppingCart size={18} />
+                Add to Cart & Buy Now
+              </button>
+
+              <p className="text-xs text-stone-400 text-center mt-4 leading-relaxed">
+                Submitting a request is free. Our team will contact you within 24 hours to confirm the design and price.
+              </p>
+            </div>
           </div>
         </div>
       </div>

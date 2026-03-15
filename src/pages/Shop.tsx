@@ -3,9 +3,11 @@ import { useSearchParams, useLocation } from 'react-router-dom';
 import { ProductCard } from '../components/ProductCard';
 import { Filter, ChevronDown, SlidersHorizontal, Search, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Product } from '../types';
 import { shopProducts } from '../shopProducts';
-import { getLocalProducts } from '../pages/Localproductsstore';
+import { products as dataProducts } from '../data';
 
+// ── Sub-category circle images ────────────────────────────────────────────────
 import heroImg1 from '../images/Kundan_Bangels/Kundan_Bangels4.png';
 import heroImg5 from '../images/kundan_jhumkas/kundan_jhumkas1.png';
 import heroImg6 from '../images/traditional_jhumkas/traditional_jhumkas1.png';
@@ -15,25 +17,33 @@ import prodImg3 from '../images/Kundan_Bangels/Kundan_Bangels10.png';
 import prodImg4 from '../images/studs/studs7.jpg';
 import prodImg5 from '../images/Kundan_Bangels/Kundan_Bangels20.png';
 
-const categories = ['Bangles', 'Earrings'];
+// ── ALL imports done — safe to declare constants now ─────────────────────────
+
+// Combine all 75 local products (shopProducts=69, data.ts=6)
+// Loaded instantly from local image files — no backend / DB needed.
+const LOCAL_PRODUCTS: Product[] = [...shopProducts, ...dataProducts];
+
+console.log('[Shop] Total local products loaded:', LOCAL_PRODUCTS.length);
+
+const staticCategories = ['Bangles', 'Earrings'];
 
 const subCategories: Record<string, string[]> = {
-  'Earrings': ['Studs', 'Jhumkas', 'Modern Jhumkas', 'Silk Thread Jhumkas', 'Traditional Jhumkas'],
-  'Bangles':  ['Traditional', 'Modern', 'Bridal'],
+  Earrings: ['Studs', 'Jhumkas', 'Modern Jhumkas', 'Silk Thread Jhumkas', 'Traditional Jhumkas'],
+  Bangles:  ['Traditional', 'Modern', 'Bridal'],
 };
 
 const subCategoryImages: Record<string, Record<string, string>> = {
   Earrings: {
-    'Studs':               prodImg4,
-    'Jhumkas':             heroImg5,
+    Studs:                 prodImg4,
+    Jhumkas:               heroImg5,
     'Modern Jhumkas':      prodImg1,
     'Silk Thread Jhumkas': prodImg2,
     'Traditional Jhumkas': heroImg6,
   },
   Bangles: {
-    'Traditional': heroImg1,
-    'Modern':      prodImg3,
-    'Bridal':      prodImg5,
+    Traditional: heroImg1,
+    Modern:      prodImg3,
+    Bridal:      prodImg5,
   },
 };
 
@@ -52,38 +62,34 @@ export const Shop = () => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isMobile, setIsMobile]         = useState(false);
   const [currentPage, setCurrentPage]   = useState(1);
-  const [allProducts, setAllProducts]   = useState(() => [...shopProducts, ...getLocalProducts()]);
-
-  // Scroll to top whenever the Shop component mounts or location changes
-  useEffect(() => {
-    window.scrollTo(0, 0);
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-  }, [location.pathname, location.search]); // Trigger on path or search params change
-
-  // Additional scroll to top on component mount
-  useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-  }, []);
-
-  // Re-read localStorage every time Shop page is visited
-  useEffect(() => {
-    setAllProducts([...shopProducts, ...getLocalProducts()]);
-  }, []);
+  const [allProducts, setAllProducts]   = useState<Product[]>([]);
 
   const [expandedSections, setExpandedSections] = useState({
     categories: true,
     priceRange: true,
     sizes: true,
   });
+
   const itemsPerPage = 12;
 
-  const activeCategory    = searchParams.get('category');
-  const activeSubCategory = searchParams.get('subCategory');
-  const activePriceRange  = searchParams.get('priceRange');
-  const activeSize        = searchParams.get('size');
-  const searchQuery       = searchParams.get('q') || '';
+  // ── Load products on mount ────────────────────────────────────────────────
+  useEffect(() => {
+    // Load all 75 local products immediately — no spinner, no API wait
+    setAllProducts(LOCAL_PRODUCTS);
+    console.log('[Shop] Products set:', LOCAL_PRODUCTS.length);
+  }, []);
 
+  // Scroll to top on route change
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [location.pathname, location.search]);
+
+  // Scroll to top on page change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [currentPage]);
+
+  // Detect mobile
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 1024);
     check();
@@ -91,13 +97,17 @@ export const Shop = () => {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // Scroll to top when filters change or page changes
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [currentPage, activeCategory, activeSubCategory, activePriceRange, activeSize]);
+  // ── URL filter params ─────────────────────────────────────────────────────
+  const activeCategory    = searchParams.get('category');
+  const activeSubCategory = searchParams.get('subCategory');
+  const activePriceRange  = searchParams.get('priceRange');
+  const activeSize        = searchParams.get('size');
+  const searchQuery       = searchParams.get('q') || '';
+  const filterParam       = searchParams.get('filter');
 
+  // ── Client-side filtering ─────────────────────────────────────────────────
   const filteredProducts = useMemo(() => {
-    return allProducts.filter(product => {
+    const result = allProducts.filter(product => {
       if (activeCategory    && product.category    !== activeCategory)    return false;
       if (activeSubCategory && product.subCategory !== activeSubCategory) return false;
       if (activePriceRange) {
@@ -105,66 +115,62 @@ export const Shop = () => {
         if (range && (product.price < range.min || product.price > range.max)) return false;
       }
       if (activeSize && (!product.sizes || !product.sizes.includes(activeSize))) return false;
+      if (filterParam === 'trending'   && !product.trending)   return false;
+      if (filterParam === 'new'        && !product.newArrival) return false;
+      if (filterParam === 'topSelling' && !product.topSelling) return false;
+      if (filterParam === 'under500'   && !product.under500)   return false;
       if (searchQuery) {
-        const q = searchQuery.toLowerCase();
+        const q    = searchQuery.toLowerCase();
         const text = `${product.name} ${product.category} ${product.subCategory} ${product.description}`.toLowerCase();
         if (!text.includes(q)) return false;
       }
       return true;
     });
-  }, [activeCategory, activeSubCategory, activePriceRange, activeSize, searchQuery, allProducts]);
+    console.log('[Shop] Filtered:', result.length, 'of', allProducts.length);
+    return result;
+  }, [allProducts, activeCategory, activeSubCategory, activePriceRange, activeSize, filterParam, searchQuery]);
 
   const totalPages        = Math.ceil(filteredProducts.length / itemsPerPage);
   const paginatedProducts = filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const hasActiveFilters  = !!(activeCategory || activeSubCategory || activePriceRange || activeSize || searchQuery);
+  const hasActiveFilters  = !!(activeCategory || activeSubCategory || activePriceRange || activeSize || searchQuery || filterParam);
   const activeFilterCount = [activeCategory, activeSubCategory, activePriceRange, activeSize].filter(Boolean).length;
 
+  // ── Filter handlers ───────────────────────────────────────────────────────
   const toggleCategory = (cat: string) => {
     const p = new URLSearchParams(searchParams);
     if (activeCategory === cat) { p.delete('category'); p.delete('subCategory'); }
     else { p.set('category', cat); p.delete('subCategory'); }
-    setSearchParams(p);
-    setCurrentPage(1);
+    setSearchParams(p); setCurrentPage(1);
     if (isMobile) setIsFilterOpen(false);
   };
-
   const toggleSubCategory = (sub: string) => {
     const p = new URLSearchParams(searchParams);
     activeSubCategory === sub ? p.delete('subCategory') : p.set('subCategory', sub);
-    setSearchParams(p);
-    setCurrentPage(1);
+    setSearchParams(p); setCurrentPage(1);
     if (isMobile) setIsFilterOpen(false);
   };
-
   const setPriceRange = (label: string) => {
     const p = new URLSearchParams(searchParams);
     activePriceRange === label ? p.delete('priceRange') : p.set('priceRange', label);
-    setSearchParams(p);
-    setCurrentPage(1);
+    setSearchParams(p); setCurrentPage(1);
     if (isMobile) setIsFilterOpen(false);
   };
-
   const setSize = (size: string) => {
     const p = new URLSearchParams(searchParams);
     activeSize === size ? p.delete('size') : p.set('size', size);
-    setSearchParams(p);
-    setCurrentPage(1);
+    setSearchParams(p); setCurrentPage(1);
     if (isMobile) setIsFilterOpen(false);
   };
-
   const clearFilters = () => {
-    setSearchParams({});
-    setCurrentPage(1);
+    setSearchParams({}); setCurrentPage(1);
     if (isMobile) setIsFilterOpen(false);
   };
+  const toggleSection = (s: 'categories' | 'priceRange' | 'sizes') =>
+    setExpandedSections(prev => ({ ...prev, [s]: !prev[s] }));
 
-  const toggleSection = (section: 'categories' | 'priceRange' | 'sizes') => {
-    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
-  };
-
+  // ── Filter sidebar content ────────────────────────────────────────────────
   const FilterContent = () => (
     <div className="space-y-8">
-
       {/* Categories */}
       <div>
         <button onClick={() => toggleSection('categories')}
@@ -174,7 +180,7 @@ export const Shop = () => {
         </button>
         {expandedSections.categories && (
           <div className="space-y-3">
-            {categories.map(cat => (
+            {staticCategories.map(cat => (
               <div key={cat}>
                 <button onClick={() => toggleCategory(cat)}
                   className={`w-full text-left text-sm py-1 transition-colors flex items-center justify-between
@@ -221,7 +227,7 @@ export const Shop = () => {
         )}
       </div>
 
-      {/* Sizes */}
+      {/* Bangle Sizes */}
       <div>
         <button onClick={() => toggleSection('sizes')}
           className="w-full font-serif font-bold text-lg mb-4 flex items-center justify-between py-2 hover:text-brand-deep-green transition-colors">
@@ -240,10 +246,10 @@ export const Shop = () => {
           </div>
         )}
       </div>
-
     </div>
   );
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="bg-brand-bg-green min-h-screen py-12">
       <div className="container mx-auto px-4">
@@ -252,7 +258,9 @@ export const Shop = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
           <div>
             <h1 className="text-4xl font-serif font-bold mb-2">Our Collection</h1>
-            <p className="text-stone-500 text-sm">Showing {filteredProducts.length} exquisite pieces</p>
+            <p className="text-stone-500 text-sm">
+              Showing {filteredProducts.length} of {allProducts.length} pieces
+            </p>
           </div>
           <div className="flex items-center gap-4">
             <div className="relative flex-grow md:w-64">
@@ -261,6 +269,7 @@ export const Shop = () => {
                   const p = new URLSearchParams(searchParams);
                   e.target.value ? p.set('q', e.target.value) : p.delete('q');
                   setSearchParams(p);
+                  setCurrentPage(1);
                 }}
                 className="w-full bg-white border border-stone-200 rounded-full px-6 py-2 pl-12 focus:outline-none focus:ring-2 focus:ring-brand-deep-green/20"
               />
@@ -290,7 +299,9 @@ export const Shop = () => {
                   <div className="sticky top-24 bg-white rounded-2xl p-6 shadow-sm border border-stone-100">
                     {hasActiveFilters && (
                       <div className="flex items-center justify-between mb-4 pb-4 border-b border-stone-100">
-                        <span className="text-xs font-bold text-stone-500 uppercase tracking-widest">{activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''} active</span>
+                        <span className="text-xs font-bold text-stone-500 uppercase tracking-widest">
+                          {activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''} active
+                        </span>
                         <button onClick={clearFilters}
                           className="text-xs font-bold text-brand-deep-green bg-brand-light-green px-3 py-1.5 rounded-full hover:bg-brand-deep-green hover:text-white transition-all">
                           Clear All
@@ -310,8 +321,7 @@ export const Shop = () => {
               {isFilterOpen && (
                 <>
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    onClick={() => setIsFilterOpen(false)}
-                    className="fixed inset-0 bg-black/50 z-40" />
+                    onClick={() => setIsFilterOpen(false)} className="fixed inset-0 bg-black/50 z-40" />
                   <motion.div
                     initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
                     transition={{ type: 'spring', damping: 30, stiffness: 300 }}
@@ -346,10 +356,10 @@ export const Shop = () => {
             </AnimatePresence>
           )}
 
-          {/* Product area */}
+          {/* Product grid */}
           <div className="flex-grow min-w-0">
 
-            {/* Subcategory circles — appear when category is active */}
+            {/* Sub-category circles */}
             {activeCategory && subCategories[activeCategory] && (
               <div className="mb-8">
                 <p className="text-xs uppercase tracking-widest text-stone-400 font-bold mb-4">
@@ -368,8 +378,7 @@ export const Shop = () => {
                             : 'border-stone-200 group-hover:border-brand-gold group-hover:scale-105'}`}>
                           {img
                             ? <img src={img} alt={sub} className="w-full h-full object-cover" />
-                            : <div className="w-full h-full bg-brand-light-green" />
-                          }
+                            : <div className="w-full h-full bg-brand-light-green" />}
                         </div>
                         <span className={`text-xs text-center max-w-[68px] leading-tight font-medium transition-colors
                           ${isActive ? 'text-brand-deep-green font-bold' : 'text-stone-500 group-hover:text-brand-deep-green'}`}>
@@ -417,54 +426,58 @@ export const Shop = () => {
                     </button>
                   </span>
                 )}
+                {filterParam && (
+                  <span className="flex items-center gap-1 bg-brand-gold text-white text-xs px-3 py-1.5 rounded-full font-medium">
+                    {filterParam}
+                    <button onClick={() => { const p = new URLSearchParams(searchParams); p.delete('filter'); setSearchParams(p); }} className="hover:opacity-70 ml-0.5">
+                      <X size={12} />
+                    </button>
+                  </span>
+                )}
               </div>
             )}
 
             {/* Products */}
-            <div>
-              {paginatedProducts.length > 0 ? (
-                <>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {paginatedProducts.map(product => (
-                      <ProductCard key={product.id} product={product} />
-                    ))}
-                  </div>
-
-                  {totalPages > 1 && (
-                    <div className="mt-16 flex items-center justify-center space-x-4">
-                      <button disabled={currentPage === 1} onClick={() => setCurrentPage(prev => prev - 1)}
-                        className="w-10 h-10 rounded-full border border-stone-200 flex items-center justify-center disabled:opacity-30 hover:bg-white transition-colors">
-                        <ChevronDown className="rotate-90" size={18} />
-                      </button>
-                      <div className="flex items-center space-x-2">
-                        {[...Array(totalPages)].map((_, i) => (
-                          <button key={i} onClick={() => setCurrentPage(i + 1)}
-                            className={`w-10 h-10 rounded-full text-sm font-medium transition-all ${currentPage === i + 1 ? 'bg-brand-deep-green text-white' : 'hover:bg-white'}`}>
-                            {i + 1}
-                          </button>
-                        ))}
-                      </div>
-                      <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(prev => prev + 1)}
-                        className="w-10 h-10 rounded-full border border-stone-200 flex items-center justify-center disabled:opacity-30 hover:bg-white transition-colors">
-                        <ChevronDown className="-rotate-90" size={18} />
-                      </button>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-stone-200">
-                  <div className="w-16 h-16 bg-stone-50 rounded-full flex items-center justify-center mx-auto mb-4 text-stone-300">
-                    <Filter size={32} />
-                  </div>
-                  <h3 className="text-xl font-serif font-bold mb-2">No products found</h3>
-                  <p className="text-stone-400 text-sm mb-6">Try adjusting your filters</p>
-                  <button onClick={clearFilters} className="bg-brand-deep-green text-white px-8 py-2 rounded-full font-medium">
-                    Clear All Filters
-                  </button>
+            {paginatedProducts.length > 0 ? (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+                  {paginatedProducts.map(product => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
                 </div>
-              )}
-            </div>
 
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="mt-16 flex items-center justify-center gap-2 flex-wrap">
+                    <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}
+                      className="w-10 h-10 rounded-full border border-stone-200 flex items-center justify-center disabled:opacity-30 hover:bg-white transition-colors">
+                      <ChevronDown className="rotate-90" size={18} />
+                    </button>
+                    {[...Array(totalPages)].map((_, i) => (
+                      <button key={i} onClick={() => setCurrentPage(i + 1)}
+                        className={`w-10 h-10 rounded-full text-sm font-medium transition-all ${currentPage === i + 1 ? 'bg-brand-deep-green text-white' : 'hover:bg-white border border-stone-200'}`}>
+                        {i + 1}
+                      </button>
+                    ))}
+                    <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}
+                      className="w-10 h-10 rounded-full border border-stone-200 flex items-center justify-center disabled:opacity-30 hover:bg-white transition-colors">
+                      <ChevronDown className="-rotate-90" size={18} />
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-stone-200">
+                <div className="w-16 h-16 bg-stone-50 rounded-full flex items-center justify-center mx-auto mb-4 text-stone-300">
+                  <Filter size={32} />
+                </div>
+                <h3 className="text-xl font-serif font-bold mb-2">No products found</h3>
+                <p className="text-stone-400 text-sm mb-6">Try adjusting your filters</p>
+                <button onClick={clearFilters} className="bg-brand-deep-green text-white px-8 py-2 rounded-full font-medium">
+                  Clear All Filters
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

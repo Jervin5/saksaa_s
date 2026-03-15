@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product } from './types';
+import { apiService } from './services/apiService';
 
 interface WishlistContextType {
   wishlist: Product[];
@@ -12,35 +13,78 @@ interface WishlistContextType {
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
 
 export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [wishlist, setWishlist] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('wishlist');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [wishlist, setWishlist] = useState<Product[]>([]);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem('saksaas_user'));
 
+  // ── Sync from backend when user logs in ──────────────────────────────────
+  const syncFromBackend = async () => {
+    try {
+      const items = await apiService.getWishlist();
+      setWishlist(items);
+      // Also persist locally as fallback
+      localStorage.setItem('wishlist', JSON.stringify(items));
+    } catch {
+      // If not logged in or error, fall back to localStorage
+      const saved = localStorage.getItem('wishlist');
+      if (saved) setWishlist(JSON.parse(saved));
+    }
+  };
+
+  // ── On mount: load wishlist ───────────────────────────────────────────────
+  useEffect(() => {
+    if (isLoggedIn) {
+      syncFromBackend();
+    } else {
+      // Guest: use localStorage
+      const saved = localStorage.getItem('wishlist');
+      if (saved) setWishlist(JSON.parse(saved));
+    }
+  }, [isLoggedIn]);
+
+  // ── Listen for login/logout events ───────────────────────────────────────
+  useEffect(() => {
+    const onLogin = () => {
+      setIsLoggedIn(true);
+      syncFromBackend();
+    };
+    const onLogout = () => {
+      setIsLoggedIn(false);
+      setWishlist([]);
+      localStorage.removeItem('wishlist');
+    };
+    window.addEventListener('saksaas-login', onLogin);
+    window.addEventListener('saksaas-logout', onLogout);
+    return () => {
+      window.removeEventListener('saksaas-login', onLogin);
+      window.removeEventListener('saksaas-logout', onLogout);
+    };
+  }, []);
+
+  // ── Save to localStorage whenever wishlist changes ────────────────────────
   useEffect(() => {
     localStorage.setItem('wishlist', JSON.stringify(wishlist));
   }, [wishlist]);
 
   const addToWishlist = (product: Product) => {
-    if (!wishlist.find(item => item.id === product.id)) {
-      setWishlist([...wishlist, product]);
+    if (wishlist.find(item => item.id === product.id)) return;
+    setWishlist(prev => [...prev, product]);
+    // Sync to backend (fire-and-forget)
+    if (isLoggedIn) {
+      apiService.addToWishlist(product.id).catch(console.error);
     }
   };
 
   const removeFromWishlist = (productId: string) => {
-    setWishlist(wishlist.filter(item => item.id !== productId));
+    setWishlist(prev => prev.filter(item => item.id !== productId));
+    if (isLoggedIn) {
+      apiService.removeFromWishlist(productId).catch(console.error);
+    }
   };
 
-  const isInWishlist = (productId: string) => {
-    return wishlist.some(item => item.id === productId);
-  };
+  const isInWishlist = (productId: string) => wishlist.some(item => item.id === productId);
 
   const toggleWishlist = (product: Product) => {
-    if (isInWishlist(product.id)) {
-      removeFromWishlist(product.id);
-    } else {
-      addToWishlist(product);
-    }
+    isInWishlist(product.id) ? removeFromWishlist(product.id) : addToWishlist(product);
   };
 
   return (
@@ -51,9 +95,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 };
 
 export const useWishlist = () => {
-  const context = useContext(WishlistContext);
-  if (context === undefined) {
-    throw new Error('useWishlist must be used within a WishlistProvider');
-  }
-  return context;
+  const ctx = useContext(WishlistContext);
+  if (!ctx) throw new Error('useWishlist must be used within a WishlistProvider');
+  return ctx;
 };
